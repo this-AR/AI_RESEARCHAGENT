@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # AI Research Agent
 
 A sophisticated multi-agent research automation system built with CrewAI that autonomously discovers leads, conducts comprehensive company research, and generates personalized outreach campaigns.
