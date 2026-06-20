@@ -26,6 +26,9 @@ research_data/
 .ipynb_checkpoints/
 .vscode/
 .idea/
+upgrade-ideas.md
+UPGRADE.md
+CLAUDE.md
 
 # Operating systems
 .DS_Store
