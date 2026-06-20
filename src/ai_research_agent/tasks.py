@@ -1,0 +1,61 @@
+"""CrewAI task factory."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from .errors import DependencyError
+
+
+def build_tasks(agents: dict[str, Any]) -> list[Any]:
+    try:
+        from crewai import Task
+    except ImportError as exc:
+        raise DependencyError(
+            "CrewAI is not installed. Run: python -m pip install -e ."
+        ) from exc
+
+    research = Task(
+        description=(
+            "Research {company_name} in {industry}. Focus on the stated milestone "
+            "({recent_milestone}) and verify the role of {key_decision_maker} ({position}). "
+            "Identify market position, recent developments, plausible challenges, and outreach "
+            "triggers. Include a URL next to every factual claim. Label inferences explicitly."
+        ),
+        expected_output=(
+            "A Markdown research brief with an executive summary, decision-maker evidence, "
+            "recent developments, opportunities, risks, and a source list."
+        ),
+        agent=agents["lead"],
+    )
+    emails = Task(
+        description=(
+            "Using only the supported research, draft a four-message outreach sequence for "
+            "{key_decision_maker} at {company_name}. Keep each message concise, specific, and "
+            "honest. Do not invent social proof, metrics, clients, or capabilities."
+        ),
+        expected_output=(
+            "Four email drafts, each with a subject, body, call to action, and suggested timing."
+        ),
+        agent=agents["email"],
+        context=[research],
+    )
+    review = Task(
+        description=(
+            "Review the research-to-email handoff. Identify missing evidence, unsupported claims, "
+            "and weak personalization. Recommend precise corrections."
+        ),
+        expected_output="A short handoff review with pass/fail findings and corrections.",
+        agent=agents["orchestrator"],
+        context=[research, emails],
+    )
+    quality = Task(
+        description=(
+            "Perform final quality assurance. Check factual support, tone, readability, and calls "
+            "to action. Return corrected deliverables and a clear go/no-go recommendation."
+        ),
+        expected_output="A final QA report followed by corrected, ready-for-human-review emails.",
+        agent=agents["quality"],
+        context=[research, emails, review],
+    )
+    return [research, emails, review, quality]
