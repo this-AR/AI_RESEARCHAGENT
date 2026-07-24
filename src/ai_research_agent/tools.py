@@ -27,15 +27,32 @@ def build_tools(settings: Settings) -> dict[str, Any]:
     # -----------------------------------------------------------------------
     class SentimentAnalysisTool(BaseTool):
         name: str = "Sentiment Analysis"
-        description: str = "Scores the tone of proposed outreach copy."
+        description: str = "Scores the tone of proposed outreach copy using a language model."
 
         def _run(self, text: str) -> str:
-            positive = {"growth", "successful", "opportunity", "value", "partnership", "innovation", "launch", "milestone"}
-            negative = {"decline", "failure", "loss", "problem", "setback", "crisis", "layoff", "cut"}
-            tokens = {token.strip(".,!?;:'\"").lower() for token in text.split()}
-            score = len(tokens & positive) - len(tokens & negative)
-            label = "positive" if score > 0 else "negative" if score < 0 else "neutral"
-            return f"Tone: {label}; lexical score: {score}."
+            import requests
+
+            if not settings.groq_api_key:
+                return "Tone: unknown. Groq API key missing."
+            
+            headers = {
+                "Authorization": f"Bearer {settings.groq_api_key}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": settings.groq_model,
+                "messages": [
+                    {"role": "system", "content": "You are a sentiment analysis tool. Classify the following outreach text's tone (Positive, Negative, or Neutral) and provide a 1-sentence reasoning. Keep your response very brief."},
+                    {"role": "user", "content": text}
+                ],
+                "temperature": 0.0
+            }
+            try:
+                resp = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=10)
+                resp.raise_for_status()
+                return resp.json()["choices"][0]["message"]["content"]
+            except Exception as e:
+                return f"Tone: unknown. API error: {e}"
 
     # -----------------------------------------------------------------------
     # Search tool — delegates to search_engine with caching, dedup, retries
@@ -66,21 +83,34 @@ def build_tools(settings: Settings) -> dict[str, Any]:
     # -----------------------------------------------------------------------
     class LeadProfilingTool(BaseTool):
         name: str = "Lead Profile Outline"
-        description: str = "Creates a consistent checklist for company qualification research."
+        description: str = "Creates a tailored checklist for company qualification research."
 
         def _run(self, company_data: str) -> str:
+            import requests
+
             company = company_data.strip() or "Unknown company"
-            return (
-                f"Profile target: {company}\n"
-                "Research dimensions:\n"
-                "- Market position and industry fit\n"
-                "- Recent developments and milestones (with sources)\n"
-                "- Decision-maker evidence (role, contact info, confidence)\n"
-                "- Pain points and challenges (with evidence)\n"
-                "- Outreach timing and relevance\n"
-                "- Source freshness and verification status\n"
-                "Do not assign a score unless supporting evidence is present."
-            )
+            if not settings.groq_api_key:
+                return f"Profile target: {company}\nResearch standard dimensions."
+
+            headers = {
+                "Authorization": f"Bearer {settings.groq_api_key}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": settings.groq_model,
+                "messages": [
+                    {"role": "system", "content": "You are a sales research strategist. Create a 5-bullet-point research checklist tailored specifically for the provided company or industry. The checklist must guide a researcher on what to look for to qualify the lead. Be extremely concise. No intro/outro."},
+                    {"role": "user", "content": company}
+                ],
+                "temperature": 0.3
+            }
+            try:
+                resp = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=10)
+                resp.raise_for_status()
+                content = resp.json()["choices"][0]["message"]["content"]
+                return f"Tailored Research Outline for {company}:\n{content}"
+            except Exception as e:
+                return f"Profile target: {company}\nResearch standard dimensions. (Error: {e})"
 
     # -----------------------------------------------------------------------
     # File parser tool — CSV/JSON bulk import

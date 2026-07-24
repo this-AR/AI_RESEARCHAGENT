@@ -101,7 +101,17 @@ class LeadScore(BaseModel):
     @classmethod
     def from_factors(cls, factors: list[LeadScoreFactor], summary: str = "") -> "LeadScore":
         total = sum(f.score for f in factors)
-        return cls(total=min(total, 100), factors=factors, summary=summary)
+        if total > 100:
+            scale = 100 / total
+            for f in factors:
+                f.score = int(f.score * scale)
+            # distribute any remaining points to the largest factor to ensure sum is exactly 100
+            new_total = sum(f.score for f in factors)
+            if new_total < 100 and factors:
+                largest = max(factors, key=lambda f: f.score)
+                largest.score += (100 - new_total)
+            total = 100
+        return cls(total=total, factors=factors, summary=summary)
 
 
 class EmailMessage(BaseModel):

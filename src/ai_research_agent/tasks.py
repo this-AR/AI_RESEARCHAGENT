@@ -14,6 +14,8 @@ def build_tasks(agents: dict[str, Any]) -> list[Any]:
         raise DependencyError(
             "CrewAI is not installed. Run: python -m pip install -e ."
         ) from exc
+    
+    from .schemas import CompanyProfile, EmailCampaign, QualityReport
 
     research = Task(
         description=(
@@ -23,10 +25,11 @@ def build_tasks(agents: dict[str, Any]) -> list[Any]:
             "triggers. Include a URL next to every factual claim. Label inferences explicitly."
         ),
         expected_output=(
-            "A Markdown research brief with an executive summary, decision-maker evidence, "
+            "A structured CompanyProfile with an executive summary, decision-maker evidence, "
             "recent developments, opportunities, risks, and a source list."
         ),
         agent=agents["lead"],
+        output_pydantic=CompanyProfile,
     )
     emails = Task(
         description=(
@@ -35,10 +38,11 @@ def build_tasks(agents: dict[str, Any]) -> list[Any]:
             "honest. Do not invent social proof, metrics, clients, or capabilities."
         ),
         expected_output=(
-            "Four email drafts, each with a subject, body, call to action, and suggested timing."
+            "A structured EmailCampaign containing four email drafts, each with a subject, body, call to action, and suggested timing."
         ),
         agent=agents["email"],
         context=[research],
+        output_pydantic=EmailCampaign,
     )
     review = Task(
         description=(
@@ -54,8 +58,9 @@ def build_tasks(agents: dict[str, Any]) -> list[Any]:
             "Perform final quality assurance. Check factual support, tone, readability, and calls "
             "to action. Return corrected deliverables and a clear go/no-go recommendation."
         ),
-        expected_output="A final QA report followed by corrected, ready-for-human-review emails.",
+        expected_output="A structured QualityReport detailing pass/fail status, unsupported claims, missing evidence, tone issues, and recommendations.",
         agent=agents["quality"],
         context=[research, emails, review],
+        output_pydantic=QualityReport,
     )
     return [research, emails, review, quality]

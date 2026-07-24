@@ -56,9 +56,13 @@ def _write_result(
         f"- Company: {target.company_name}\n"
         f"- Decision maker: {target.key_decision_maker} ({target.position})\n"
         f"- Created: {created_at}\n\n"
-        "## Result\n\n"
         f"{_result_text(result)}\n"
     )
+    if hasattr(result, "pydantic") and result.pydantic:
+        import json
+        content += "\n## Structured Output\n```json\n"
+        content += json.dumps(result.pydantic.model_dump(), indent=2)
+        content += "\n```\n"
     output_path.write_text(content, encoding="utf-8")
     return output_path
 
@@ -93,4 +97,12 @@ def run_research(
     if output_path is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_path = settings.output_dir / f"research_{timestamp}.md"
-    return result, _write_result(result, target, output_path)
+
+    structured_outputs = {
+        "company_profile": crew.tasks[0].output.pydantic if len(crew.tasks) > 0 else None,
+        "campaign": crew.tasks[1].output.pydantic if len(crew.tasks) > 1 else None,
+        "quality": crew.tasks[3].output.pydantic if len(crew.tasks) > 3 else None,
+        "raw_result": result,
+    }
+
+    return structured_outputs, _write_result(result, target, output_path)

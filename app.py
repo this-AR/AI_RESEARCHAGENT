@@ -117,49 +117,45 @@ if submitted:
 
         # Phase 2: run CrewAI workflow
         progress.progress(40, text="Running research agents...")
-        raw_result, md_path = run_research(target, live_settings)
+        structured_outputs, md_path = run_research(target, live_settings)
 
         progress.progress(80, text="Scoring lead and building exports...")
 
         # Build structured run from available data
-        # Note: raw_result is CrewAI free-text.  We supplement with structured
-        # search results and deterministic lead scoring.
-        company_profile = CompanyProfile(
-            company_name=company,
-            industry=industry,
-            sources=search_results,
-        )
+        # Note: We now have Pydantic objects directly from the CrewAI workflow
+        company_profile = structured_outputs.get("company_profile")
+        if not company_profile:
+            company_profile = CompanyProfile(
+                company_name=company,
+                industry=industry,
+                sources=search_results,
+            )
+        elif not company_profile.sources and search_results:
+            company_profile.sources = search_results
+
         dm = DecisionMaker(
             name=decision_maker,
             position=position,
         )
         lead_score = score_lead(company_profile, dm)
 
-        # Parse simple email structure from raw_result if possible
-        emails: list[EmailMessage] = []
+        campaign = structured_outputs.get("campaign")
+        if not campaign:
+            campaign = EmailCampaign(
+                target_company=company,
+                target_contact=decision_maker,
+                emails=[],
+            )
+
+        quality = structured_outputs.get("quality")
+        if not quality:
+            quality = QualityReport(
+                passed=bool(search_results and len(campaign.emails) >= 1),
+                recommendations=["Review emails for factual accuracy before sending."],
+            )
+
+        raw_result = structured_outputs.get("raw_result", "")
         raw_text = str(raw_result)
-        # Heuristic: split on "Subject:" lines
-        chunks = raw_text.split("Subject:")
-        for chunk in chunks[1:]:
-            lines = chunk.strip().splitlines()
-            subject = lines[0].strip() if lines else ""
-            body = "\n".join(lines[1:]).strip() if len(lines) > 1 else chunk.strip()
-            emails.append(EmailMessage(subject=subject, body=body))
-
-        if not emails:
-            # Fallback: treat entire result as one message
-            emails = [EmailMessage(subject=f"Outreach to {company}", body=raw_text)]
-
-        campaign = EmailCampaign(
-            target_company=company,
-            target_contact=decision_maker,
-            emails=emails,
-        )
-
-        quality = QualityReport(
-            passed=bool(search_results and len(emails) >= 1),
-            recommendations=["Review emails for factual accuracy before sending."],
-        )
 
         run = ResearchRun(
             target=target.as_inputs(),
