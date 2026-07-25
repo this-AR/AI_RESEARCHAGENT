@@ -43,7 +43,7 @@ def _normalize_contact(contact: dict[str, Any]) -> dict[str, Any]:
             cleaned[key] = value
     if "company_name" in cleaned:
         cleaned["company_name"] = _normalize_company_name(cleaned["company_name"])
-    if "website" in cleaned and cleaned["website"]:
+    if cleaned.get("website"):
         cleaned["website"] = _normalize_url(cleaned["website"])
     return cleaned
 

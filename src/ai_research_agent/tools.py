@@ -7,7 +7,6 @@ the optional AI runtime has been installed.
 from __future__ import annotations
 
 import json
-import os
 from typing import Any
 
 from .config import Settings
@@ -124,6 +123,7 @@ def build_tools(settings: Settings) -> dict[str, Any]:
 
         def _run(self, file_path: str) -> str:
             from pathlib import Path
+
             from .file_parser import parse_file
 
             path = Path(file_path)

@@ -1,9 +1,8 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from unittest import TestCase
 
 from ai_research_agent.schemas import (
     CompanyProfile,
-    DecisionMaker,
     EmailCampaign,
     EmailMessage,
     EvidenceClaim,

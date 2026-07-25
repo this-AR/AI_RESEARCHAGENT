@@ -99,7 +99,7 @@ class LeadScore(BaseModel):
         return factors
 
     @classmethod
-    def from_factors(cls, factors: list[LeadScoreFactor], summary: str = "") -> "LeadScore":
+    def from_factors(cls, factors: list[LeadScoreFactor], summary: str = "") -> LeadScore:
         total = sum(f.score for f in factors)
         if total > 100:
             scale = 100 / total

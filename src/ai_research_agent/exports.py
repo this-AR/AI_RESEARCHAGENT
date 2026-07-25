@@ -11,8 +11,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .schemas import EmailCampaign, LeadScore, ResearchRun
-
+from .schemas import ResearchRun
 
 # ---------------------------------------------------------------------------
 # JSON

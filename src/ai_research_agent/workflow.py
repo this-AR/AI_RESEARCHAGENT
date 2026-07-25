@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import logging
-from pathlib import Path
 import time
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from .agents import build_agents
@@ -100,7 +100,7 @@ def run_research(
         raise WorkflowError("Research workflow stopped without producing a result.")
 
     if output_path is None:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         output_path = settings.output_dir / f"research_{timestamp}.md"
 
     structured_outputs = {

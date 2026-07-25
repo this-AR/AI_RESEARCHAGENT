@@ -8,9 +8,15 @@ from negative evidence so callers can distinguish "don't know" from "no fit".
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
 
-from .schemas import CompanyProfile, DecisionMaker, EvidenceClaim, EvidenceStatus, LeadScore, LeadScoreFactor
+from .schemas import (
+    CompanyProfile,
+    DecisionMaker,
+    EvidenceClaim,
+    EvidenceStatus,
+    LeadScore,
+    LeadScoreFactor,
+)
 
 
 def _has_verified_claim(evidence: list[EvidenceClaim]) -> bool:

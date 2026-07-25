@@ -1,12 +1,12 @@
 import os
 from pathlib import Path
 from unittest import TestCase
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from ai_research_agent.config import Settings
 from ai_research_agent.models import ResearchTarget
-from ai_research_agent.workflow import run_research
 from ai_research_agent.schemas import CompanyProfile, EmailCampaign, QualityReport
+from ai_research_agent.workflow import run_research
 
 
 class WorkflowIntegrationTests(TestCase):

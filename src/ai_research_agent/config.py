@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
 from .errors import ConfigurationError
@@ -38,7 +38,7 @@ class Settings:
     verbose: bool
 
     @classmethod
-    def from_env(cls, *, require_live_credentials: bool = True) -> "Settings":
+    def from_env(cls, *, require_live_credentials: bool = True) -> Settings:
         _load_dotenv()
 
         api_key = os.getenv("GROQ_API_KEY", "").strip()

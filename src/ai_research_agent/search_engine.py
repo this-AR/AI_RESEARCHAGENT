@@ -6,13 +6,13 @@ This module is intentionally free of CrewAI imports so it can be tested offline.
 from __future__ import annotations
 
 import hashlib
-import logging
-import time
 import json
+import logging
 import sqlite3
-from collections import OrderedDict
+import time
+from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import Any, Callable
+from typing import Any
 
 from pydantic import HttpUrl
 

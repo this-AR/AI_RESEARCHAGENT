@@ -10,7 +10,7 @@ from .errors import DependencyError
 
 def build_agents(settings: Settings, tools: dict[str, Any]) -> dict[str, Any]:
     try:
-        from crewai import Agent, LLM
+        from crewai import LLM, Agent
     except ImportError as exc:
         raise DependencyError(
             "CrewAI is not installed. Run: python -m pip install -e ."

@@ -1,12 +1,10 @@
 import json
-import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 
 from ai_research_agent.errors import WorkflowError
 from ai_research_agent.file_parser import parse_csv, parse_file, parse_json
-from ai_research_agent.models import ResearchTarget
 
 
 class ParseCSVTests(TestCase):
@@ -63,7 +61,7 @@ class ParseJSONTests(TestCase):
                 }
             ]
             path.write_text(json.dumps(data), encoding="utf-8")
-            targets, errors = parse_json(path)
+            targets, _errors = parse_json(path)
             self.assertEqual(len(targets), 1)
             self.assertEqual(targets[0].key_decision_maker, "Alice")
 
@@ -78,7 +76,7 @@ class ParseJSONTests(TestCase):
                 "recent_milestone": "IPO",
             }
             path.write_text(json.dumps(data), encoding="utf-8")
-            targets, errors = parse_json(path)
+            targets, _errors = parse_json(path)
             self.assertEqual(len(targets), 1)
 
     def test_rejects_invalid_root(self) -> None:
@@ -99,14 +97,14 @@ class ParseFileAutoTests(TestCase):
                 "Acme,Technology,Alice,CEO,Launch\n",
                 encoding="utf-8",
             )
-            targets, errors = parse_file(path)
+            targets, _errors = parse_file(path)
             self.assertEqual(len(targets), 1)
 
     def test_auto_json(self) -> None:
         with TemporaryDirectory() as tmp:
             path = Path(tmp) / "leads.json"
             path.write_text(json.dumps([{"company_name": "Acme", "industry": "Tech", "key_decision_maker": "Alice", "position": "CEO", "recent_milestone": "Launch"}]), encoding="utf-8")
-            targets, errors = parse_file(path)
+            targets, _errors = parse_file(path)
             self.assertEqual(len(targets), 1)
 
     def test_unsupported_extension_raises(self) -> None:
