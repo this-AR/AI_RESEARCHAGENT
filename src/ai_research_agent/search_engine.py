@@ -45,6 +45,12 @@ class _SearchCache:
                 )
             ''')
 
+    def clear(self) -> None:
+        """Clear all entries from the cache."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("DELETE FROM search_cache")
+            conn.commit()
+
     def _key(self, query: str, provider: str) -> str:
         return hashlib.sha256(f"{provider}:{query}".encode()).hexdigest()
 
