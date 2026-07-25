@@ -82,10 +82,15 @@ def run_research(
         try:
             LOGGER.info("Starting research for %s (attempt %s/%s)", target.company_name, attempt, max_attempts)
             result = crew.kickoff(inputs=target.as_inputs())
+            
+            # Validation/Rejection check
+            if not getattr(result, "pydantic", None):
+                raise WorkflowError("Validation rejected: Agent failed to return expected structured Pydantic output.")
+                
             break
         except Exception as exc:
             message = str(exc).lower()
-            retryable = any(token in message for token in ("rate limit", "rate_limit", "timeout", "temporarily"))
+            retryable = any(token in message for token in ("rate limit", "rate_limit", "timeout", "temporarily", "validation rejected"))
             if not retryable or attempt == max_attempts:
                 raise WorkflowError(f"Research workflow failed: {exc}") from exc
             LOGGER.warning("Transient provider error; retrying in %s seconds", delay_seconds)
