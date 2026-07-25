@@ -33,9 +33,11 @@ def build_tasks(agents: dict[str, Any]) -> list[Any]:
     )
     emails = Task(
         description=(
-            "Using only the supported research, draft a four-message outreach sequence for "
-            "{key_decision_maker} at {company_name}. Keep each message concise, specific, and "
-            "honest. Do not invent social proof, metrics, clients, or capabilities."
+            "Draft a 4-step email sequence based on the CompanyProfile. Keep it concise, personalized, and "
+            "honest. Do not invent social proof, metrics, clients, or capabilities. "
+            "CRITICAL REQUIREMENT: For every factual claim, metric, or recent milestone you mention, you MUST "
+            "include an inline markdown link to the source URL provided in the CompanyProfile (e.g., "
+            "'We saw you raised $10M [Source](https://example.com)')."
         ),
         expected_output=(
             "A structured EmailCampaign containing four email drafts, each with a subject, body, call to action, and suggested timing."
