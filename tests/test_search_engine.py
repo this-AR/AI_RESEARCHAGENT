@@ -58,15 +58,24 @@ class DeduplicateTests(TestCase):
 
 
 class SearchCacheTests(TestCase):
-    def test_get_miss(self) -> None:
-        cache = _SearchCache()
-        self.assertIsNone(cache.get("query", "provider"))
+    def setUp(self):
+        from ai_research_agent.search_engine import _SEARCH_CACHE
+        _SEARCH_CACHE.clear()
 
     def test_get_hit(self) -> None:
         cache = _SearchCache()
+        cache.clear()
         results = [ResearchSource(url="https://example.com", title="A", provider="test")]
         cache.set("query", "provider", results)
-        self.assertEqual(cache.get("query", "provider"), results)
+        hit = cache.get("query", "provider")
+        self.assertIsNotNone(hit)
+        self.assertEqual(len(hit), 1)
+        self.assertEqual(str(hit[0].url), "https://example.com/")
+
+    def test_get_miss(self) -> None:
+        cache = _SearchCache()
+        cache.clear()
+        self.assertIsNone(cache.get("query", "provider"))
 
     def test_ttl_expires(self) -> None:
         import time
@@ -94,7 +103,7 @@ class SearchAPITests(TestCase):
         mock_search.return_value = [ResearchSource(url="https://example.com", title="A", provider="test")]
         # Clear cache state
         from ai_research_agent.search_engine import _SEARCH_CACHE
-        _SEARCH_CACHE._store.clear()
+        _SEARCH_CACHE.clear()
 
         first = search("cached query", provider="duckduckgo", use_cache=True)
         second = search("cached query", provider="duckduckgo", use_cache=True)
