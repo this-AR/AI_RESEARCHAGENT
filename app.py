@@ -107,72 +107,70 @@ if submitted:
         recent_milestone=milestone,
     )
 
-    progress = st.progress(0, text="Starting research...")
-
     try:
-        # Phase 1: web search (independent, evidence-gathering)
-        progress.progress(10, text="Searching the web...")
-        search_query = f"{company} {industry} {milestone}"
-        search_results = search(search_query, provider=live_settings.search_provider.lower(), api_key=live_settings.serper_api_key)
+        with st.status("Running Research Pipeline...", expanded=True) as status:
+            # Phase 1: web search (independent, evidence-gathering)
+            status.update(label="Searching the web for evidence...")
+            search_query = f"{company} {industry} {milestone}"
+            search_results = search(search_query, provider=live_settings.search_provider.lower(), api_key=live_settings.serper_api_key)
 
-        # Phase 2: run CrewAI workflow
-        progress.progress(40, text="Running research agents...")
-        structured_outputs, md_path = run_research(target, live_settings)
+            # Phase 2: run CrewAI workflow
+            status.update(label="Running CrewAI research agents...")
+            structured_outputs, md_path = run_research(target, live_settings)
 
-        progress.progress(80, text="Scoring lead and building exports...")
+            status.update(label="Scoring lead and building exports...")
 
-        # Build structured run from available data
-        # Note: We now have Pydantic objects directly from the CrewAI workflow
-        company_profile = structured_outputs.get("company_profile")
-        if not company_profile:
-            company_profile = CompanyProfile(
-                company_name=company,
-                industry=industry,
-                sources=search_results,
+            # Build structured run from available data
+            company_profile = structured_outputs.get("company_profile")
+            if not company_profile:
+                company_profile = CompanyProfile(
+                    company_name=company,
+                    industry=industry,
+                    sources=search_results,
+                )
+            elif not company_profile.sources and search_results:
+                company_profile.sources = search_results
+
+            dm = DecisionMaker(
+                name=decision_maker,
+                position=position,
             )
-        elif not company_profile.sources and search_results:
-            company_profile.sources = search_results
+            lead_score = score_lead(company_profile, dm)
 
-        dm = DecisionMaker(
-            name=decision_maker,
-            position=position,
-        )
-        lead_score = score_lead(company_profile, dm)
+            campaign = structured_outputs.get("campaign")
+            if not campaign:
+                campaign = EmailCampaign(
+                    target_company=company,
+                    target_contact=decision_maker,
+                    emails=[],
+                )
 
-        campaign = structured_outputs.get("campaign")
-        if not campaign:
-            campaign = EmailCampaign(
-                target_company=company,
-                target_contact=decision_maker,
-                emails=[],
+            quality = structured_outputs.get("quality")
+            if not quality:
+                quality = QualityReport(
+                    passed=bool(search_results and len(campaign.emails) >= 1),
+                    recommendations=["Review emails for factual accuracy before sending."],
+                )
+
+            raw_result = structured_outputs.get("raw_result", "")
+            raw_text = str(raw_result)
+
+            run = ResearchRun(
+                target=target.as_inputs(),
+                company_profile=company_profile,
+                decision_maker=dm,
+                lead_score=lead_score,
+                campaign=campaign,
+                quality=quality,
             )
 
-        quality = structured_outputs.get("quality")
-        if not quality:
-            quality = QualityReport(
-                passed=bool(search_results and len(campaign.emails) >= 1),
-                recommendations=["Review emails for factual accuracy before sending."],
-            )
-
-        raw_result = structured_outputs.get("raw_result", "")
-        raw_text = str(raw_result)
-
-        run = ResearchRun(
-            target=target.as_inputs(),
-            company_profile=company_profile,
-            decision_maker=dm,
-            lead_score=lead_score,
-            campaign=campaign,
-            quality=quality,
-        )
-
-        progress.progress(100, text="Done!")
+            status.update(label="Research complete!", state="complete", expanded=False)
+            
         st.session_state["last_run"] = run
         st.session_state["last_raw"] = raw_text
         st.session_state["last_md_path"] = str(md_path)
 
     except Exception as exc:
-        progress.progress(100, text="Error")
         st.error(f"Workflow failed: {exc}")
         st.stop()
 
@@ -263,4 +261,11 @@ if "last_run" in st.session_state:
         st.caption(f"CrewAI Markdown also saved to: `{st.session_state.get('last_md_path', 'N/A')}`")
 
 else:
-    st.info("Fill in the form above and click **Run Research** to get started.")
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        st.info("👋 Welcome to the AI Research Agent!")
+        st.markdown(
+            "Use the sidebar to configure your API keys, then fill in the **Target Company** "
+            "form above to automatically research a lead and generate grounded outreach emails."
+        )
