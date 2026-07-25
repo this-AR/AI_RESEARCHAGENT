@@ -33,3 +33,4 @@ CLAUDE.md
 # Operating systems
 .DS_Store
 Thumbs.db
+.search_cache.db

@@ -8,6 +8,8 @@ from __future__ import annotations
 import hashlib
 import logging
 import time
+import json
+import sqlite3
 from collections import OrderedDict
 from datetime import datetime, timezone
 from typing import Any, Callable
@@ -25,12 +27,23 @@ LOGGER = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 class _SearchCache:
-    """Simple in-memory LRU cache with TTL."""
+    """Persistent SQLite cache with TTL."""
 
-    def __init__(self, maxsize: int = 128, ttl_seconds: int = 300) -> None:
-        self._store: OrderedDict[str, tuple[float, list[ResearchSource]]] = OrderedDict()
+    def __init__(self, db_path: str = ".search_cache.db", maxsize: int = 500, ttl_seconds: int = 86400) -> None:
+        self.db_path = db_path
         self._maxsize = maxsize
         self._ttl = ttl_seconds
+        self._init_db()
+
+    def _init_db(self) -> None:
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS search_cache (
+                    query_key TEXT PRIMARY KEY,
+                    inserted_at REAL,
+                    results TEXT
+                )
+            ''')
 
     def _key(self, query: str, provider: str) -> str:
         return hashlib.sha256(f"{provider}:{query}".encode()).hexdigest()
@@ -38,21 +51,48 @@ class _SearchCache:
     def get(self, query: str, provider: str) -> list[ResearchSource] | None:
         key = self._key(query, provider)
         now = time.time()
-        if key in self._store:
-            inserted, results = self._store[key]
-            if now - inserted <= self._ttl:
-                self._store.move_to_end(key)
-                LOGGER.debug("Cache hit for query: %s", query[:60])
-                return results
-            del self._store[key]
+        
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT inserted_at, results FROM search_cache WHERE query_key = ?", (key,))
+            row = cursor.fetchone()
+            
+            if row:
+                inserted_at, results_json = row
+                if now - inserted_at <= self._ttl:
+                    LOGGER.debug("Cache hit for query: %s", query[:60])
+                    data = json.loads(results_json)
+                    return [ResearchSource(**item) for item in data]
+                else:
+                    cursor.execute("DELETE FROM search_cache WHERE query_key = ?", (key,))
+                    conn.commit()
         return None
 
     def set(self, query: str, provider: str, results: list[ResearchSource]) -> None:
         key = self._key(query, provider)
-        self._store[key] = (time.time(), results)
-        self._store.move_to_end(key)
-        while len(self._store) > self._maxsize:
-            self._store.popitem(last=False)
+        now = time.time()
+        results_json = json.dumps([r.model_dump(mode="json") for r in results])
+        
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT OR REPLACE INTO search_cache (query_key, inserted_at, results)
+                VALUES (?, ?, ?)
+            ''', (key, now, results_json))
+            
+            cursor.execute("SELECT COUNT(*) FROM search_cache")
+            count = cursor.fetchone()[0]
+            if count > self._maxsize:
+                limit = count - self._maxsize
+                cursor.execute('''
+                    DELETE FROM search_cache 
+                    WHERE query_key IN (
+                        SELECT query_key FROM search_cache 
+                        ORDER BY inserted_at ASC 
+                        LIMIT ?
+                    )
+                ''', (limit,))
+            conn.commit()
 
 
 # Global process-level cache instance.
