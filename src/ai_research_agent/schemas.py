@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class EvidenceStatus(str, Enum):
@@ -22,7 +22,7 @@ class EvidenceStatus(str, Enum):
 class ResearchSource(BaseModel):
     """A single web source used during research."""
 
-    url: HttpUrl
+    url: str
     title: str = Field(..., min_length=1)
     snippet: str = ""
     provider: str = Field(default="", min_length=1, description="Search provider name, e.g. DuckDuckGo")
@@ -38,7 +38,7 @@ class EvidenceClaim(BaseModel):
     """A factual claim with provenance and confidence."""
 
     claim: str = Field(..., min_length=1)
-    source_url: HttpUrl | None = None
+    source_url: str | None = None
     retrieved_at: datetime | None = None
     confidence: float = Field(0.5, ge=0.0, le=1.0)
     status: EvidenceStatus = EvidenceStatus.inferred
