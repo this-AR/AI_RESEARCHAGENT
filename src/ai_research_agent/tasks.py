@@ -65,4 +65,16 @@ def build_tasks(agents: dict[str, Any]) -> list[Any]:
         context=[research, emails, review],
         output_pydantic=QualityReport,
     )
-    return [research, emails, review, quality]
+    rewrite = Task(
+        description=(
+            "Review the QualityReport and the drafted EmailCampaign. "
+            "If the QualityReport indicates that the sequence failed (passed is false), you MUST completely rewrite "
+            "the emails to resolve all unsupported claims, tone issues, and incorporate all recommendations. "
+            "If the QualityReport indicates passed is true, return the original emails unchanged."
+        ),
+        expected_output="A structured EmailCampaign containing the final, corrected outreach messages.",
+        agent=agents["email"],
+        context=[research, emails, quality],
+        output_pydantic=EmailCampaign,
+    )
+    return [research, emails, review, quality, rewrite]
