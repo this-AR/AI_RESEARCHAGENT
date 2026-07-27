@@ -93,9 +93,8 @@ class LeadScore(BaseModel):
     def _total_matches_factors(cls, factors: list[LeadScoreFactor], info: Any) -> list[LeadScoreFactor]:
         # Pydantic v2 validator signature: second arg is ValidationInfo.
         calculated = sum(f.score for f in factors)
-        if factors and hasattr(info, "data") and "total" in info.data:
-            if calculated != info.data["total"]:
-                raise ValueError(f"Sum of factor scores ({calculated}) does not match total score ({info.data['total']})")
+        if factors and hasattr(info, "data") and "total" in info.data and calculated != info.data["total"]:
+            raise ValueError(f"Sum of factor scores ({calculated}) does not match total score ({info.data['total']})")
         return factors
 
     @classmethod
