@@ -14,7 +14,7 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
 
-from pydantic import HttpUrl
+from pydantic import HttpUrl, ValidationError
 
 from .errors import ConfigurationError, DependencyError, WorkflowError
 from .schemas import ResearchSource
@@ -119,7 +119,7 @@ def _normalize_url(url: str) -> str | None:
     try:
         parsed = HttpUrl(url)
         return str(parsed)
-    except Exception:
+    except (TypeError, ValidationError, ValueError):
         return None
 
 

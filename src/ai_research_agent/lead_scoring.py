@@ -29,12 +29,12 @@ def _count_recent_evidence(evidence: list[EvidenceClaim], days: int = 90) -> int
     for claim in evidence:
         if claim.retrieved_at is None:
             continue
-        try:
-            delta = now - claim.retrieved_at
-            if delta.days <= days:
-                count += 1
-        except Exception:
-            pass
+        retrieved_at = claim.retrieved_at
+        if retrieved_at.tzinfo is None:
+            retrieved_at = retrieved_at.replace(tzinfo=timezone.utc)
+        delta = now - retrieved_at
+        if delta.days <= days:
+            count += 1
     return count
 
 

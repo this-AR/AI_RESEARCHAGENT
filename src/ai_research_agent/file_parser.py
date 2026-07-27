@@ -12,7 +12,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from .errors import WorkflowError
+from .errors import ConfigurationError, WorkflowError
 from .models import ResearchTarget
 
 LOGGER = logging.getLogger(__name__)
@@ -68,7 +68,7 @@ def _validate_row(row: dict[str, Any], row_number: int) -> tuple[ResearchTarget 
             recent_milestone=row["recent_milestone"],
         )
         return target, None
-    except Exception as exc:
+    except ConfigurationError as exc:
         return None, f"Row {row_number}: validation error: {exc}"
 
 

@@ -23,9 +23,10 @@ class SettingsTests(TestCase):
         self.assertEqual(settings.search_provider, "DuckDuckGo")
 
     def test_rejects_missing_live_credentials(self) -> None:
-        with patch.dict(os.environ, {}, clear=True):
-            with self.assertRaisesRegex(ConfigurationError, "GROQ_API_KEY, GROQ_MODEL"):
-                Settings.from_env()
+        with patch.dict(os.environ, {}, clear=True), self.assertRaisesRegex(
+            ConfigurationError, "GROQ_API_KEY, GROQ_MODEL"
+        ):
+            Settings.from_env()
 
     def test_rejects_invalid_rate_limit(self) -> None:
         environment = {
@@ -33,6 +34,7 @@ class SettingsTests(TestCase):
             "GROQ_MODEL": "example-model",
             "RESEARCH_MAX_RPM": "zero",
         }
-        with patch.dict(os.environ, environment, clear=True):
-            with self.assertRaisesRegex(ConfigurationError, "positive integer"):
-                Settings.from_env()
+        with patch.dict(os.environ, environment, clear=True), self.assertRaisesRegex(
+            ConfigurationError, "positive integer"
+        ):
+            Settings.from_env()

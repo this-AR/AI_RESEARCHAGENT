@@ -50,7 +50,7 @@ def build_tools(settings: Settings) -> dict[str, Any]:
                 resp = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=10)
                 resp.raise_for_status()
                 return resp.json()["choices"][0]["message"]["content"]
-            except Exception as e:
+            except (requests.RequestException, KeyError, TypeError, ValueError, json.JSONDecodeError) as e:
                 return f"Tone: unknown. API error: {e}"
 
     # -----------------------------------------------------------------------
@@ -108,7 +108,7 @@ def build_tools(settings: Settings) -> dict[str, Any]:
                 resp.raise_for_status()
                 content = resp.json()["choices"][0]["message"]["content"]
                 return f"Tailored Research Outline for {company}:\n{content}"
-            except Exception as e:
+            except (requests.RequestException, KeyError, TypeError, ValueError, json.JSONDecodeError) as e:
                 return f"Profile target: {company}\nResearch standard dimensions. (Error: {e})"
 
     # -----------------------------------------------------------------------
