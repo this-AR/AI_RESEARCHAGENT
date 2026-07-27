@@ -30,8 +30,8 @@ def _as_bool(value: str) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class Settings:
-    groq_api_key: str
-    groq_model: str
+    llm_api_key: str
+    llm_model: str
     serper_api_key: str | None
     output_dir: Path
     max_rpm: int
@@ -41,13 +41,13 @@ class Settings:
     def from_env(cls, *, require_live_credentials: bool = True) -> Settings:
         _load_dotenv()
 
-        api_key = os.getenv("GROQ_API_KEY", "").strip()
-        model = os.getenv("GROQ_MODEL", "").strip()
+        api_key = (os.getenv("LLM_API_KEY") or os.getenv("GROQ_API_KEY", "")).strip()
+        model = (os.getenv("LLM_MODEL") or os.getenv("GROQ_MODEL", "")).strip()
         missing = []
         if require_live_credentials and not api_key:
-            missing.append("GROQ_API_KEY")
+            missing.append("LLM_API_KEY")
         if require_live_credentials and not model:
-            missing.append("GROQ_MODEL")
+            missing.append("LLM_MODEL")
         if missing:
             names = ", ".join(missing)
             raise ConfigurationError(
@@ -66,8 +66,8 @@ class Settings:
         verbose = _as_bool(os.getenv("RESEARCH_VERBOSE", "false"))
 
         return cls(
-            groq_api_key=api_key,
-            groq_model=model,
+            llm_api_key=api_key,
+            llm_model=model,
             serper_api_key=os.getenv("SERPER_API_KEY", "").strip() or None,
             output_dir=output_dir,
             max_rpm=max_rpm,
