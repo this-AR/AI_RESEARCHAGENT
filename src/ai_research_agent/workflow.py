@@ -59,9 +59,8 @@ def _write_result(
         f"{_result_text(result)}\n"
     )
     if hasattr(result, "pydantic") and result.pydantic:
-        import json
         content += "\n## Structured Output\n```json\n"
-        content += json.dumps(result.pydantic.model_dump(), indent=2)
+        content += result.pydantic.model_dump_json(indent=2)
         content += "\n```\n"
     output_path.write_text(content, encoding="utf-8")
     return output_path
@@ -105,7 +104,7 @@ def run_research(
 
     structured_outputs = {
         "company_profile": crew.tasks[0].output.pydantic if len(crew.tasks) > 0 else None,
-        "campaign": crew.tasks[1].output.pydantic if len(crew.tasks) > 1 else None,
+        "campaign": crew.tasks[4].output.pydantic if len(crew.tasks) > 4 else (crew.tasks[1].output.pydantic if len(crew.tasks) > 1 else None),
         "quality": crew.tasks[3].output.pydantic if len(crew.tasks) > 3 else None,
         "raw_result": result,
     }
