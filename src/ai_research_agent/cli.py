@@ -67,6 +67,28 @@ def _run(args: argparse.Namespace) -> int:
         recent_milestone=args.milestone,
     )
 
+    try:
+        import litellm
+        _original_completion = litellm.completion
+        _original_acompletion = litellm.acompletion
+
+        def _patched_completion(*args, **kwargs):
+            if "messages" in kwargs:
+                for msg in kwargs["messages"]:
+                    msg.pop("cache_breakpoint", None)
+            return _original_completion(*args, **kwargs)
+
+        async def _patched_acompletion(*args, **kwargs):
+            if "messages" in kwargs:
+                for msg in kwargs["messages"]:
+                    msg.pop("cache_breakpoint", None)
+            return await _original_acompletion(*args, **kwargs)
+
+        litellm.completion = _patched_completion
+        litellm.acompletion = _patched_acompletion
+    except ImportError:
+        pass
+
     from .workflow import run_research
 
     _, path = run_research(target, settings, output_path=args.output)
