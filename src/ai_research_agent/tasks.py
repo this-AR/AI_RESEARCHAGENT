@@ -40,7 +40,8 @@ def build_tasks(agents: dict[str, Any]) -> list[Any]:
             "'We saw you raised $10M [Source](https://example.com)')."
         ),
         expected_output=(
-            "A structured EmailCampaign containing four email drafts, each with a subject, body, call to action, and suggested timing."
+            "A structured EmailCampaign containing four email drafts, each with a subject, body, call to action, and suggested timing. "
+            "Each body cites its claims with inline [Source](url) links taken from the CompanyProfile."
         ),
         agent=agents["email"],
         context=[research],
@@ -70,9 +71,16 @@ def build_tasks(agents: dict[str, Any]) -> list[Any]:
             "Review the QualityReport and the drafted EmailCampaign. "
             "If the QualityReport indicates that the sequence failed (passed is false), you MUST completely rewrite "
             "the emails to resolve all unsupported claims, tone issues, and incorporate all recommendations. "
-            "If the QualityReport indicates passed is true, return the original emails unchanged."
+            "If the QualityReport indicates passed is true, return the original emails unchanged. "
+            "In both cases, every factual claim in an email body MUST keep or gain an inline markdown "
+            "link like [Source](https://...), and personalization_evidence source_url values must be "
+            "copied exactly. Use only URLs that appear in the CompanyProfile; never invent or alter a "
+            "URL. Remove any claim you cannot link to such a URL."
         ),
-        expected_output="A structured EmailCampaign containing the final, corrected outreach messages.",
+        expected_output=(
+            "A structured EmailCampaign containing the final, corrected outreach messages, where each "
+            "email body cites its claims with inline [Source](url) links taken from the CompanyProfile."
+        ),
         agent=agents["email"],
         context=[research, emails, quality],
         output_pydantic=EmailCampaign,
