@@ -75,7 +75,7 @@ def build_tasks(agents: dict[str, Any]) -> list[Any]:
             "In both cases, every factual claim in an email body MUST keep or gain an inline markdown "
             "link like [Source](https://...), and personalization_evidence source_url values must be "
             "copied exactly. Use only URLs that appear in the CompanyProfile; never invent or alter a "
-            "URL. Remove any claim you cannot link to such a URL."
+            "URL. Remove any claim you cannot link to such a URL, but always return exactly four emails."
         ),
         expected_output=(
             "A structured EmailCampaign containing the final, corrected outreach messages, where each "
