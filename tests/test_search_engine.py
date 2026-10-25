@@ -69,7 +69,7 @@ class SearchCacheTests(TestCase):
         hit = cache.get("query", "provider")
         self.assertIsNotNone(hit)
         self.assertEqual(len(hit), 1)
-        self.assertEqual(str(hit[0].url), "https://example.com/")
+        self.assertEqual(str(hit[0].url), "https://example.com")
 
     def test_get_miss(self) -> None:
         cache = _SearchCache()
