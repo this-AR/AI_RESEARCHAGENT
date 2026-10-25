@@ -4,7 +4,7 @@ Run with:
     streamlit run app.py
 
 Requires:
-    - GROQ_API_KEY and GROQ_MODEL in .env
+    - LLM_API_KEY and LLM_MODEL in .env
     - Optional SERPER_API_KEY
 """
 
@@ -49,7 +49,7 @@ st.sidebar.caption("Company research and outreach generation")
 with st.sidebar.expander("Setup"):
     st.markdown("""
     1. Copy `.env.example` to `.env`
-    2. Set `GROQ_API_KEY` and `GROQ_MODEL`
+    2. Set `LLM_API_KEY` and `LLM_MODEL`
     3. Optional: set `SERPER_API_KEY` for better search
     """)
 
