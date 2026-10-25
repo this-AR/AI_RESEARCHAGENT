@@ -1,13 +1,17 @@
+import tempfile
+from pathlib import Path
 from types import SimpleNamespace
 from unittest import TestCase
 
-from ai_research_agent.evaluation import check_campaign, score_outputs, summarize
+from ai_research_agent.evaluation import check_campaign, rescore, score_outputs, summarize
+from ai_research_agent.exports import export_json
 from ai_research_agent.schemas import (
     CompanyProfile,
     EmailCampaign,
     EmailMessage,
     EvidenceClaim,
     QualityReport,
+    ResearchRun,
 )
 
 RETRIEVED = {"https://acme.com/news/"}
@@ -87,6 +91,33 @@ class CheckCampaignTests(TestCase):
 
     def test_rejects_everything_when_search_returned_nothing(self) -> None:
         self.assertIn("never returned", check_campaign(GOOD, set()))
+
+
+class RescoreTests(TestCase):
+    def test_rescore_matches_live_scoring_without_api_calls(self) -> None:
+        profile = CompanyProfile(company_name="Acme")
+        quality = QualityReport(passed=True)
+        run = ResearchRun(
+            target={"company_name": "Acme"},
+            company_profile=profile,
+            campaign=GOOD,
+            quality=quality,
+            model="gemini/x",
+            retrieved_urls=sorted(RETRIEVED),
+            token_usage={"total_tokens": 99},
+        )
+        live = score_outputs(
+            {"company_profile": profile, "campaign": GOOD, "quality": quality, "retrieved_urls": RETRIEVED}
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            export_json(run, Path(tmp) / "acme.json")
+            (Path(tmp) / "eval_report.json").write_text("{}", encoding="utf-8")  # must be skipped
+            summary = rescore(Path(tmp))
+
+        self.assertEqual(summary["completed"], 1)
+        self.assertEqual(summary["mean_citation_coverage"], live["citation_coverage"])
+        self.assertEqual(summary["mean_grounded_link_rate"], live["grounded_link_rate"])
+        self.assertEqual(summary["total_tokens"], 99)
 
 
 class SummarizeTests(TestCase):
