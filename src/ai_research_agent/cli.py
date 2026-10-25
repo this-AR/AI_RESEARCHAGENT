@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import json
 import sys
 from collections.abc import Sequence
+from datetime import datetime, timezone
 from pathlib import Path
 
 from . import __version__
 from .config import Settings
 from .errors import ConfigurationError, ResearchAgentError
+from .file_parser import parse_file
 from .logging_config import configure_logging
 from .models import ResearchTarget
 
@@ -34,6 +37,13 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--milestone", required=True, help="recent event to investigate")
     run.add_argument("--output", type=Path, help="optional Markdown output path")
     run.set_defaults(handler=_run)
+
+    evaluate = subparsers.add_parser("eval", help="run live research over a dataset and score it")
+    evaluate.add_argument(
+        "--dataset", type=Path, default=Path("data/eval_dataset.csv"), help="CSV or JSON targets"
+    )
+    evaluate.add_argument("--limit", type=int, help="only evaluate the first N targets")
+    evaluate.set_defaults(handler=_eval)
     return parser
 
 
@@ -66,7 +76,34 @@ def _run(args: argparse.Namespace) -> int:
         position=args.position,
         recent_milestone=args.milestone,
     )
+    _patch_litellm()
 
+    from .workflow import run_research
+
+    _, path = run_research(target, settings, output_path=args.output)
+    print(f"Research completed: {path.resolve()}")
+    return 0
+
+
+def _eval(args: argparse.Namespace) -> int:
+    settings = Settings.from_env(require_live_credentials=True)
+    configure_logging(settings.verbose)
+    targets, errors = parse_file(args.dataset)
+    if errors:
+        raise ConfigurationError("Invalid dataset rows: " + "; ".join(errors))
+    _patch_litellm()
+
+    from .evaluation import run_eval
+
+    output_dir = settings.output_dir / "eval" / datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    report, path = run_eval(targets[: args.limit], settings, output_dir)
+    print(json.dumps(report["summary"], indent=2))
+    print(f"Report: {path.resolve()}")
+    summary = report["summary"]
+    return 0 if summary["completed"] == summary["runs"] else 1
+
+
+def _patch_litellm() -> None:
     try:
         import litellm
         _original_completion = litellm.completion
@@ -88,12 +125,6 @@ def _run(args: argparse.Namespace) -> int:
         litellm.acompletion = _patched_acompletion
     except ImportError:
         pass
-
-    from .workflow import run_research
-
-    _, path = run_research(target, settings, output_path=args.output)
-    print(f"Research completed: {path.resolve()}")
-    return 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:
