@@ -150,5 +150,9 @@ class ResearchRun(BaseModel):
     lead_score: LeadScore | None = None
     campaign: EmailCampaign | None = None
     quality: QualityReport | None = None
+    model: str = ""
+    sources: list[ResearchSource] = Field(default_factory=list)
+    retrieved_urls: list[str] = Field(default_factory=list)
+    token_usage: dict[str, int] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     run_id: str = Field(default_factory=lambda: datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S"))
