@@ -7,22 +7,33 @@ from typing import Any
 from .errors import DependencyError
 
 
-def build_tasks(agents: dict[str, Any]) -> list[Any]:
+def build_tasks(agents: dict[str, Any], retrieved_urls: set[str]) -> list[Any]:
     try:
         from crewai import Task
     except ImportError as exc:
         raise DependencyError(
             "CrewAI is not installed. Run: python -m pip install -e ."
         ) from exc
-    
+
+    from .evaluation import check_campaign
     from .schemas import CompanyProfile, EmailCampaign, QualityReport
+
+    # No return annotation: crewai rejects the string form produced by `from __future__ import annotations`.
+    def campaign_guardrail(output):
+        error = check_campaign(output.pydantic, retrieved_urls)
+        return (False, error) if error else (True, output)
 
     research = Task(
         description=(
             "Research {company_name} in {industry}. Focus on the stated milestone "
             "({recent_milestone}) and verify the role of {key_decision_maker} ({position}). "
             "Identify market position, recent developments, plausible challenges, and outreach "
-            "triggers. Include a URL next to every factual claim. Label inferences explicitly."
+            "triggers. Include a URL next to every factual claim. Label inferences explicitly.\n\n"
+            "Web search results gathered for this research (title | URL | snippet):\n"
+            "{search_results}\n\n"
+            "Base every factual claim on these results or on your own Web Search tool calls, and "
+            "copy their URLs exactly. Never cite a URL from memory; later steps reject any URL "
+            "that search did not return."
         ),
         expected_output=(
             "A structured CompanyProfile with an executive summary, decision-maker evidence, "
@@ -84,5 +95,7 @@ def build_tasks(agents: dict[str, Any]) -> list[Any]:
         agent=agents["email"],
         context=[research, emails, quality],
         output_pydantic=EmailCampaign,
+        guardrail=campaign_guardrail,
+        guardrail_max_retries=2,
     )
     return [research, emails, review, quality, rewrite]
