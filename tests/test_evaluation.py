@@ -6,6 +6,7 @@ from ai_research_agent.schemas import (
     CompanyProfile,
     EmailCampaign,
     EmailMessage,
+    EvidenceClaim,
     QualityReport,
     ResearchSource,
 )
@@ -25,7 +26,11 @@ class ScoreOutputsTests(TestCase):
             emails=[
                 _email("Congrats [Source](https://acme.com/news)"),  # grounded despite slash
                 _email("Saw this [Source](https://made-up.example)"),  # not a researched URL
-                _email("No link here"),
+                EmailMessage(
+                    subject="Hi",
+                    body="No inline link",
+                    personalization_evidence=[EvidenceClaim(claim="News", source_url="https://acme.com/news")],
+                ),
                 _email("Also none"),
             ]
         )
@@ -40,7 +45,8 @@ class ScoreOutputsTests(TestCase):
 
         self.assertTrue(metrics["schema_valid"])
         self.assertEqual(metrics["citation_coverage"], 0.5)
-        self.assertEqual(metrics["grounded_link_rate"], 0.5)
+        self.assertEqual(metrics["evidence_coverage"], 0.25)
+        self.assertAlmostEqual(metrics["grounded_link_rate"], 2 / 3)
         self.assertFalse(metrics["qa_passed"])
         self.assertEqual(metrics["unsupported_claims"], 1)
         self.assertEqual(metrics["total_tokens"], 1234)
