@@ -55,6 +55,14 @@ research-agent run \
 
 Use `research-agent --help` to see all options. Results are written to `outputs/` unless `--output` specifies another path.
 
+Evaluate the pipeline live over a dataset (defaults to `data/eval_dataset.csv`):
+
+```bash
+research-agent eval --limit 1
+```
+
+Each run is scored automatically (schema validity, citation coverage, share of cited links that the research step actually found, QA verdict, latency, tokens). The report is written to `outputs/eval/<timestamp>/eval_report.json`. There is no hand-labelled ground truth; QA fields reflect the quality agent's own judgement.
+
 ## Configuration
 
 | Variable | Required | Purpose |
