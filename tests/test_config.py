@@ -30,6 +30,27 @@ class SettingsTests(TestCase):
         with patch.dict(os.environ, environment, clear=True):
             self.assertEqual(Settings.from_env().litellm_model, "openai/gpt-4o-mini")
 
+    def test_fallback_switches_model_and_key_and_never_chains(self, _) -> None:
+        environment = {
+            "LLM_API_KEY": "gemini-key",
+            "LLM_MODEL": "gemini/gemini-3.1-flash-lite",
+            "LLM_FALLBACK_MODEL": "llama-3.3-70b-versatile",
+            "LLM_FALLBACK_API_KEY": "groq-key",
+        }
+        with patch.dict(os.environ, environment, clear=True):
+            fallback = Settings.from_env().fallback()
+
+        self.assertEqual(fallback.litellm_model, "groq/llama-3.3-70b-versatile")
+        self.assertEqual(fallback.llm_api_key, "groq-key")
+        self.assertIsNone(fallback.fallback())
+
+    def test_fallback_key_defaults_to_primary_and_is_optional(self, _) -> None:
+        base = {"LLM_API_KEY": "key", "LLM_MODEL": "gemini/a"}
+        with patch.dict(os.environ, {**base, "LLM_FALLBACK_MODEL": "gemini/b"}, clear=True):
+            self.assertEqual(Settings.from_env().fallback().llm_api_key, "key")
+        with patch.dict(os.environ, base, clear=True):
+            self.assertIsNone(Settings.from_env().fallback())
+
     def test_rejects_missing_live_credentials(self, _) -> None:
         with patch.dict(os.environ, {}, clear=True), self.assertRaisesRegex(
             ConfigurationError, "LLM_API_KEY, LLM_MODEL"
