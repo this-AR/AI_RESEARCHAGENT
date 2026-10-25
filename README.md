@@ -63,6 +63,22 @@ research-agent eval --limit 1
 
 Each run is scored automatically (schema validity, citation coverage, share of cited links that the research step actually found, QA verdict, latency, tokens). The report is written to `outputs/eval/<timestamp>/eval_report.json`. There is no hand-labelled ground truth; QA fields reflect the quality agent's own judgement.
 
+### Latest results
+
+`gemini/gemini-3.1-flash-lite`, the 5 companies in `data/eval_dataset.csv`, one run each (2026-10-25):
+
+| Metric | Before citation fix | Current |
+|---|---:|---:|
+| Schema-valid runs | 100% | 100% |
+| Emails with inline source links (target ≥ 90%) | 0% | 95% |
+| Cited URLs found by the research step | not measured | 100% |
+| Draft passed QA | 0% | 20% |
+| Unsupported claims flagged per run | 1.4 | 0.8 |
+| Mean latency per company | 140 s | 101 s |
+| Tokens per company | ~93k | ~89k |
+
+QA runs before the final rewrite, so its pass rate describes the draft, not the delivered emails. With 5 companies and one run each, treat differences as indicative; provider 503 retries add latency variance.
+
 ## Configuration
 
 | Variable | Required | Purpose |
