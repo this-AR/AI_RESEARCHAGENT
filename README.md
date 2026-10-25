@@ -63,6 +63,12 @@ research-agent eval --limit 1
 
 Each run is scored automatically (schema validity, citation coverage, share of cited links that web search actually returned, draft QA verdict, latency, tokens). The report is written to `outputs/eval/<timestamp>/eval_report.json`. There is no hand-labelled ground truth; QA fields reflect the quality agent's own judgement.
 
+Every successful run also writes a JSON artifact next to its Markdown (target, profile, emails, QA, the model used, retrieved sources and URLs, token usage). To re-score a finished eval offline, with no API calls:
+
+```bash
+research-agent eval --rescore outputs/eval/<timestamp>
+```
+
 ### Latest results
 
 `gemini/gemini-3.1-flash-lite`, the 5 companies in `data/eval_dataset.csv`, one run each (2026-10-25):
@@ -87,6 +93,8 @@ The pipeline now runs three web searches before the crew starts, and the final e
 |---|---:|---|
 | `LLM_API_KEY` | Yes | Authenticates model requests (`GROQ_API_KEY` also accepted) |
 | `LLM_MODEL` | Yes | LiteLLM model id, e.g. `gemini/gemini-2.0-flash`; a bare name is treated as `groq/<name>` (`GROQ_MODEL` also accepted) |
+| `LLM_FALLBACK_MODEL` | No | Model to switch to when the primary keeps failing with rate limits, overload or timeouts after retries, e.g. `groq/llama-3.3-70b-versatile` |
+| `LLM_FALLBACK_API_KEY` | No | Key for the fallback provider; defaults to `LLM_API_KEY` |
 | `SERPER_API_KEY` | No | Enables Serper-backed search |
 | `RESEARCH_OUTPUT_DIR` | No | Changes the output directory |
 | `RESEARCH_MAX_RPM` | No | Controls request rate; defaults to `5` |
