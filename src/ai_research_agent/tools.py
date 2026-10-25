@@ -13,7 +13,8 @@ from .config import Settings
 from .errors import DependencyError
 
 
-def build_tools(settings: Settings) -> dict[str, Any]:
+def build_tools(settings: Settings, retrieved_urls: set[str]) -> dict[str, Any]:
+    """Build the tools; SearchTool adds every URL it returns to ``retrieved_urls``."""
     try:
         from crewai.tools import BaseTool
     except ImportError as exc:
@@ -74,6 +75,7 @@ def build_tools(settings: Settings) -> dict[str, Any]:
             provider = "serper" if settings.serper_api_key else "duckduckgo"
             api_key = settings.serper_api_key
             results = search(query, provider=provider, api_key=api_key, max_results=5)
+            retrieved_urls.update(str(r.url) for r in results)
             if not results:
                 return "No search results found."
             formatted = [
