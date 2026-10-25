@@ -22,6 +22,24 @@ def build_tools(settings: Settings) -> dict[str, Any]:
         ) from exc
 
     # -----------------------------------------------------------------------
+    # Shared LLM call for the tools below
+    # -----------------------------------------------------------------------
+    def _complete(system: str, user: str, temperature: float) -> str:
+        import litellm
+
+        response = litellm.completion(
+            model=settings.litellm_model,
+            api_key=settings.llm_api_key,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            temperature=temperature,
+            timeout=10,
+        )
+        return response.choices[0].message.content
+
+    # -----------------------------------------------------------------------
     # Sentiment tool
     # -----------------------------------------------------------------------
     class SentimentAnalysisTool(BaseTool):
@@ -29,28 +47,15 @@ def build_tools(settings: Settings) -> dict[str, Any]:
         description: str = "Scores the tone of proposed outreach copy using a language model."
 
         def _run(self, text: str) -> str:
-            import requests
-
             if not settings.llm_api_key:
-                return "Tone: unknown. Groq API key missing."
-            
-            headers = {
-                "Authorization": f"Bearer {settings.llm_api_key}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "model": settings.llm_model,
-                "messages": [
-                    {"role": "system", "content": "You are a sentiment analysis tool. Classify the following outreach text's tone (Positive, Negative, or Neutral) and provide a 1-sentence reasoning. Keep your response very brief."},
-                    {"role": "user", "content": text}
-                ],
-                "temperature": 0.0
-            }
+                return "Tone: unknown. LLM API key missing."
             try:
-                resp = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=10)
-                resp.raise_for_status()
-                return resp.json()["choices"][0]["message"]["content"]
-            except (requests.RequestException, KeyError, TypeError, ValueError, json.JSONDecodeError) as e:
+                return _complete(
+                    "You are a sentiment analysis tool. Classify the following outreach text's tone (Positive, Negative, or Neutral) and provide a 1-sentence reasoning. Keep your response very brief.",
+                    text,
+                    0.0,
+                )
+            except Exception as e:  # noqa: BLE001 - a tool failure must not abort the crew
                 return f"Tone: unknown. API error: {e}"
 
     # -----------------------------------------------------------------------
@@ -85,30 +90,17 @@ def build_tools(settings: Settings) -> dict[str, Any]:
         description: str = "Creates a tailored checklist for company qualification research."
 
         def _run(self, company_data: str) -> str:
-            import requests
-
             company = company_data.strip() or "Unknown company"
             if not settings.llm_api_key:
                 return f"Profile target: {company}\nResearch standard dimensions."
-
-            headers = {
-                "Authorization": f"Bearer {settings.llm_api_key}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "model": settings.llm_model,
-                "messages": [
-                    {"role": "system", "content": "You are a sales research strategist. Create a 5-bullet-point research checklist tailored specifically for the provided company or industry. The checklist must guide a researcher on what to look for to qualify the lead. Be extremely concise. No intro/outro."},
-                    {"role": "user", "content": company}
-                ],
-                "temperature": 0.3
-            }
             try:
-                resp = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=10)
-                resp.raise_for_status()
-                content = resp.json()["choices"][0]["message"]["content"]
+                content = _complete(
+                    "You are a sales research strategist. Create a 5-bullet-point research checklist tailored specifically for the provided company or industry. The checklist must guide a researcher on what to look for to qualify the lead. Be extremely concise. No intro/outro.",
+                    company,
+                    0.3,
+                )
                 return f"Tailored Research Outline for {company}:\n{content}"
-            except (requests.RequestException, KeyError, TypeError, ValueError, json.JSONDecodeError) as e:
+            except Exception as e:  # noqa: BLE001 - a tool failure must not abort the crew
                 return f"Profile target: {company}\nResearch standard dimensions. (Error: {e})"
 
     # -----------------------------------------------------------------------
