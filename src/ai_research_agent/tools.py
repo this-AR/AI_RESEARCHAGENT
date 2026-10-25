@@ -31,15 +31,15 @@ def build_tools(settings: Settings) -> dict[str, Any]:
         def _run(self, text: str) -> str:
             import requests
 
-            if not settings.groq_api_key:
+            if not settings.llm_api_key:
                 return "Tone: unknown. Groq API key missing."
             
             headers = {
-                "Authorization": f"Bearer {settings.groq_api_key}",
+                "Authorization": f"Bearer {settings.llm_api_key}",
                 "Content-Type": "application/json"
             }
             payload = {
-                "model": settings.groq_model,
+                "model": settings.llm_model,
                 "messages": [
                     {"role": "system", "content": "You are a sentiment analysis tool. Classify the following outreach text's tone (Positive, Negative, or Neutral) and provide a 1-sentence reasoning. Keep your response very brief."},
                     {"role": "user", "content": text}
@@ -88,15 +88,15 @@ def build_tools(settings: Settings) -> dict[str, Any]:
             import requests
 
             company = company_data.strip() or "Unknown company"
-            if not settings.groq_api_key:
+            if not settings.llm_api_key:
                 return f"Profile target: {company}\nResearch standard dimensions."
 
             headers = {
-                "Authorization": f"Bearer {settings.groq_api_key}",
+                "Authorization": f"Bearer {settings.llm_api_key}",
                 "Content-Type": "application/json"
             }
             payload = {
-                "model": settings.groq_model,
+                "model": settings.llm_model,
                 "messages": [
                     {"role": "system", "content": "You are a sales research strategist. Create a 5-bullet-point research checklist tailored specifically for the provided company or industry. The checklist must guide a researcher on what to look for to qualify the lead. Be extremely concise. No intro/outro."},
                     {"role": "user", "content": company}
