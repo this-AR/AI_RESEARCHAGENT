@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from .errors import ConfigurationError
@@ -36,6 +36,8 @@ class Settings:
     output_dir: Path
     max_rpm: int
     verbose: bool
+    fallback_model: str | None = None
+    fallback_api_key: str | None = None
 
     @classmethod
     def from_env(cls, *, require_live_credentials: bool = True) -> Settings:
@@ -72,6 +74,20 @@ class Settings:
             output_dir=output_dir,
             max_rpm=max_rpm,
             verbose=verbose,
+            fallback_model=os.getenv("LLM_FALLBACK_MODEL", "").strip() or None,
+            fallback_api_key=os.getenv("LLM_FALLBACK_API_KEY", "").strip() or None,
+        )
+
+    def fallback(self) -> Settings | None:
+        """Settings for the fallback model, or None if none is configured."""
+        if not self.fallback_model:
+            return None
+        return replace(
+            self,
+            llm_model=self.fallback_model,
+            llm_api_key=self.fallback_api_key or self.llm_api_key,
+            fallback_model=None,  # a fallback never chains to another
+            fallback_api_key=None,
         )
 
     @property
