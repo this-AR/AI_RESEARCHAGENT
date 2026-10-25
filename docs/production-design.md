@@ -11,6 +11,12 @@ Measured over three 5-company eval runs with `gemini/gemini-3.1-flash-lite`:
 - The QA agent runs *before* the final rewrite, so nothing checks the emails that are actually delivered.
 - "Grounded" currently means the cited URL appears in `CompanyProfile.sources`, which the LLM also writes. That check is circular.
 
+## Status (2026-10-25)
+
+Items 1–3 are implemented. Building item 2 exposed a bigger problem: a diagnostic run counted **zero** search-tool calls by the research agent. Every earlier "source" came from model memory. `run_research` now runs three searches before the crew (`workflow._gather_sources`) and fails before any LLM call if none return results. The guardrail in `evaluation.check_campaign` enforces the email rules on the `rewrite` task. One crewai detail: a guardrail retry receives only the feedback as context, so the feedback includes the allowed URLs.
+
+Measured on the same 5 companies: runs completed 5/5, inline citations 100%, cited URLs returned by search 100% (previously about 0% in reality), at about 139k tokens per company (+56%) and 172 s mean latency.
+
 ## P0: Enforce, don't ask
 
 ### 1. Deterministic guardrail on the final task
