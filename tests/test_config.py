@@ -23,6 +23,12 @@ class SettingsTests(TestCase):
         self.assertEqual(settings.max_rpm, 7)
         self.assertTrue(settings.verbose)
         self.assertEqual(settings.search_provider, "DuckDuckGo")
+        self.assertEqual(settings.litellm_model, "groq/example-model")
+
+    def test_keeps_explicit_provider_prefix(self, _) -> None:
+        environment = {"LLM_API_KEY": "secret", "LLM_MODEL": "openai/gpt-4o-mini"}
+        with patch.dict(os.environ, environment, clear=True):
+            self.assertEqual(Settings.from_env().litellm_model, "openai/gpt-4o-mini")
 
     def test_rejects_missing_live_credentials(self, _) -> None:
         with patch.dict(os.environ, {}, clear=True), self.assertRaisesRegex(
