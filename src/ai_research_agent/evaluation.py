@@ -18,7 +18,7 @@ from .config import Settings
 from .errors import WorkflowError
 from .lead_scoring import score_lead
 from .models import ResearchTarget
-from .schemas import EmailCampaign
+from .schemas import EmailCampaign, ResearchRun
 
 LOGGER = logging.getLogger(__name__)
 _LINK = re.compile(r"\]\((https?://[^)\s]+)\)")
@@ -129,7 +129,7 @@ def run_eval(
         started = time.monotonic()
         try:
             outputs, path = run_research(target, settings, output_path=output_dir / f"{slug}.md")
-            row.update(ok=True, result=str(path), **score_outputs(outputs))
+            row.update(ok=True, result=str(path), model=outputs["model"], **score_outputs(outputs))
         except WorkflowError as exc:
             row.update(ok=False, error=str(exc))
         row["latency_s"] = round(time.monotonic() - started, 1)
@@ -144,3 +144,25 @@ def run_eval(
     report_path = output_dir / "eval_report.json"
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     return report, report_path
+
+
+def rescore(report_dir: Path) -> dict[str, Any]:
+    """Re-score the saved ResearchRun artifacts in an eval directory, with no API calls.
+
+    Failed runs leave no artifact, so rates here cover completed runs only.
+    """
+    rows: list[dict[str, Any]] = []
+    for path in sorted(report_dir.glob("*.json")):
+        if path.name == "eval_report.json":
+            continue
+        run = ResearchRun.model_validate_json(path.read_text(encoding="utf-8"))
+        outputs = {
+            "company_profile": run.company_profile,
+            "campaign": run.campaign,
+            "quality": run.quality,
+            "retrieved_urls": set(run.retrieved_urls),
+        }
+        row = {"company": run.target.get("company_name", path.stem), "ok": True, "model": run.model}
+        row.update(score_outputs(outputs), total_tokens=run.token_usage.get("total_tokens"))
+        rows.append(row)
+    return summarize(rows)
