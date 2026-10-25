@@ -43,6 +43,9 @@ def _parser() -> argparse.ArgumentParser:
         "--dataset", type=Path, default=Path("data/eval_dataset.csv"), help="CSV or JSON targets"
     )
     evaluate.add_argument("--limit", type=int, help="only evaluate the first N targets")
+    evaluate.add_argument(
+        "--rescore", type=Path, metavar="DIR", help="re-score saved run artifacts in DIR instead of running live"
+    )
     evaluate.set_defaults(handler=_eval)
     return parser
 
@@ -86,6 +89,14 @@ def _run(args: argparse.Namespace) -> int:
 
 
 def _eval(args: argparse.Namespace) -> int:
+    if args.rescore:
+        if not args.rescore.is_dir():
+            raise ConfigurationError(f"Not a directory: {args.rescore}")
+        from .evaluation import rescore
+
+        print(json.dumps(rescore(args.rescore), indent=2))
+        return 0
+
     settings = Settings.from_env(require_live_credentials=True)
     configure_logging(settings.verbose)
     targets, errors = parse_file(args.dataset)
