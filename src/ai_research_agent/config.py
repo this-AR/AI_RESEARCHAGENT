@@ -75,5 +75,10 @@ class Settings:
         )
 
     @property
+    def litellm_model(self) -> str:
+        """Model id with a provider prefix; bare names default to Groq."""
+        return self.llm_model if "/" in self.llm_model else f"groq/{self.llm_model}"
+
+    @property
     def search_provider(self) -> str:
         return "Serper" if self.serper_api_key else "DuckDuckGo"
