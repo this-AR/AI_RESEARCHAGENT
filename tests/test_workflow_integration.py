@@ -4,8 +4,9 @@ from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 from ai_research_agent.config import Settings
+from ai_research_agent.errors import WorkflowError
 from ai_research_agent.models import ResearchTarget
-from ai_research_agent.schemas import CompanyProfile, EmailCampaign, QualityReport
+from ai_research_agent.schemas import CompanyProfile, EmailCampaign, QualityReport, ResearchSource
 from ai_research_agent.workflow import run_research
 
 
@@ -27,8 +28,19 @@ class WorkflowIntegrationTests(TestCase):
             verbose=False
         )
 
+    @patch("ai_research_agent.search_engine.search", return_value=[])
     @patch("ai_research_agent.workflow.build_crew")
-    def test_run_research_success(self, mock_build_crew):
+    def test_no_search_results_fails_before_any_llm_call(self, mock_build_crew, _):
+        with self.assertRaisesRegex(WorkflowError, "cannot be grounded"):
+            run_research(self.target, self.settings)
+        mock_build_crew.assert_not_called()
+
+    @patch(
+        "ai_research_agent.search_engine.search",
+        return_value=[ResearchSource(url="https://acme.com/news/", title="Acme news", provider="test")],
+    )
+    @patch("ai_research_agent.workflow.build_crew")
+    def test_run_research_success(self, mock_build_crew, _):
         # Setup mock crew and kickoff
         mock_crew_instance = MagicMock()
         mock_build_crew.return_value = mock_crew_instance
@@ -67,6 +79,11 @@ class WorkflowIntegrationTests(TestCase):
         self.assertTrue(output_path.exists())
         self.assertEqual(structured_outputs["company_profile"].company_name, "Acme Corp")
         self.assertTrue(structured_outputs["quality"].passed)
+        # Pre-searched URLs seed the registry the crew's tool and guardrail share, and reach the prompt.
+        self.assertIs(structured_outputs["retrieved_urls"], mock_build_crew.call_args.args[1])
+        self.assertEqual(structured_outputs["retrieved_urls"], {"https://acme.com/news/"})
+        inputs = mock_crew_instance.kickoff.call_args.kwargs["inputs"]
+        self.assertIn("https://acme.com/news/", inputs["search_results"])
 
         # Clean up
         if output_path.exists():
