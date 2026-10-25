@@ -20,7 +20,7 @@ Application code lives in `src/ai_research_agent`. The original `crew1.ipynb` re
 ## Requirements
 
 - Python 3.10 or newer
-- A Groq API key and compatible Groq model name
+- An API key and model for your LLM provider (Groq by default; Gemini supported)
 - Optional Serper API key for search
 
 ## Setup
@@ -32,7 +32,7 @@ python -m pip install -e .
 copy .env.example .env
 ```
 
-Edit `.env` and provide `GROQ_API_KEY` and `GROQ_MODEL`. Never commit `.env`.
+Edit `.env` and provide `LLM_API_KEY` and `LLM_MODEL`. Never commit `.env`.
 
 ## Usage
 
@@ -59,8 +59,8 @@ Use `research-agent --help` to see all options. Results are written to `outputs/
 
 | Variable | Required | Purpose |
 |---|---:|---|
-| `GROQ_API_KEY` | Yes | Authenticates model requests |
-| `GROQ_MODEL` | Yes | Selects the model explicitly |
+| `LLM_API_KEY` | Yes | Authenticates model requests (`GROQ_API_KEY` also accepted) |
+| `LLM_MODEL` | Yes | LiteLLM model id, e.g. `gemini/gemini-2.0-flash`; a bare name is treated as `groq/<name>` (`GROQ_MODEL` also accepted) |
 | `SERPER_API_KEY` | No | Enables Serper-backed search |
 | `RESEARCH_OUTPUT_DIR` | No | Changes the output directory |
 | `RESEARCH_MAX_RPM` | No | Controls request rate; defaults to `5` |
