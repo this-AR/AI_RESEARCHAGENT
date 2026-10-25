@@ -36,16 +36,25 @@ def score_outputs(outputs: dict[str, Any]) -> dict[str, Any]:
         for claims in (profile.recent_developments, profile.pain_points, profile.opportunities, profile.risks):
             known_urls.update(c.source_url.rstrip("/") for c in claims if c.source_url)
     links = [url.rstrip("/") for e in emails for url in _LINK.findall(e.body)]
+    evidence_urls = [
+        c.source_url.rstrip("/") for e in emails for c in e.personalization_evidence if c.source_url
+    ]
+    cited = links + evidence_urls
     usage = getattr(outputs.get("raw_result"), "token_usage", None)
 
     return {
         "schema_valid": bool(profile and campaign and quality) and len(emails) == 4,
         "emails": len(emails),
         "sources": len(profile.sources) if profile else 0,
-        # Share of emails that cite at least one source link.
+        # Share of emails with an inline source link in the body, as the email task requires.
         "citation_coverage": sum(bool(_LINK.search(e.body)) for e in emails) / len(emails) if emails else 0.0,
-        # Share of cited links that point at a URL the research step actually found.
-        "grounded_link_rate": sum(u in known_urls for u in links) / len(links) if links else None,
+        # Share of emails citing a source in the structured personalization_evidence field.
+        "evidence_coverage": (
+            sum(any(c.source_url for c in e.personalization_evidence) for e in emails) / len(emails)
+            if emails else 0.0
+        ),
+        # Share of all cited URLs (inline or evidence) that the research step actually found.
+        "grounded_link_rate": sum(u in known_urls for u in cited) / len(cited) if cited else None,
         "qa_passed": bool(quality and quality.passed),
         "unsupported_claims": len(quality.unsupported_claims) if quality else None,
         "lead_score": score_lead(profile).total if profile else None,
@@ -70,6 +79,7 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "schema_valid_rate": rate("schema_valid"),
         "qa_pass_rate": rate("qa_passed"),
         "mean_citation_coverage": mean("citation_coverage", done),
+        "mean_evidence_coverage": mean("evidence_coverage", done),
         "mean_grounded_link_rate": mean("grounded_link_rate", done),
         "mean_unsupported_claims": mean("unsupported_claims", done),
         "mean_lead_score": mean("lead_score", done),
