@@ -44,7 +44,7 @@ def _doctor(_: argparse.Namespace) -> int:
     print(f"  CrewAI: {'installed' if crewai_installed else 'missing'}")
 
     settings = Settings.from_env(require_live_credentials=False)
-    credentials_ready = bool(settings.groq_api_key and settings.groq_model)
+    credentials_ready = bool(settings.llm_api_key and settings.llm_model)
     print(f"  Live credentials: {'configured' if credentials_ready else 'missing'}")
     print(f"  Search provider: {settings.search_provider}")
     print(f"  Output directory: {settings.output_dir}")
