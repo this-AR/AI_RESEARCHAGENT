@@ -61,23 +61,25 @@ Evaluate the pipeline live over a dataset (defaults to `data/eval_dataset.csv`):
 research-agent eval --limit 1
 ```
 
-Each run is scored automatically (schema validity, citation coverage, share of cited links that the research step actually found, QA verdict, latency, tokens). The report is written to `outputs/eval/<timestamp>/eval_report.json`. There is no hand-labelled ground truth; QA fields reflect the quality agent's own judgement.
+Each run is scored automatically (schema validity, citation coverage, share of cited links that web search actually returned, draft QA verdict, latency, tokens). The report is written to `outputs/eval/<timestamp>/eval_report.json`. There is no hand-labelled ground truth; QA fields reflect the quality agent's own judgement.
 
 ### Latest results
 
 `gemini/gemini-3.1-flash-lite`, the 5 companies in `data/eval_dataset.csv`, one run each (2026-10-25):
 
-| Metric | Before citation fix | Current |
-|---|---:|---:|
-| Schema-valid runs | 100% | 100% |
-| Emails with inline source links (target ≥ 90%) | 0% | 95% |
-| Cited URLs found by the research step | not measured | 100% |
-| Draft passed QA | 0% | 20% |
-| Unsupported claims flagged per run | 1.4 | 0.8 |
-| Mean latency per company | 140 s | 101 s |
-| Tokens per company | ~93k | ~89k |
+| Metric | Prompt only | Prompt citation fix | Pre-search + final-email guardrail |
+|---|---:|---:|---:|
+| Runs completed (= passed the final-email guardrail) | 100%* | 100%* | 100% |
+| Schema-valid runs | 100% | 100% | 100% |
+| Emails with inline source links (target ≥ 90%) | 0% | 95% | 100% |
+| Cited URLs actually returned by web search | ~0%** | ~0%** | 100% |
+| Draft passed QA | 0% | 20% | 20% |
+| Mean latency per company | 140 s | 101 s | 172 s |
+| Tokens per company | ~93k | ~89k | ~139k |
 
-QA runs before the final rewrite, so its pass rate describes the draft, not the delivered emails. With 5 companies and one run each, treat differences as indicative; provider 503 retries add latency variance.
+\* No final-output check existed yet. \*\* Not measured at the time. Those runs' logs show no live searches, and a later diagnostic run counted zero search-tool calls by the research agent, so their sources came from model memory. They were reported as "100% grounded" only because they matched the profile the model itself wrote.
+
+The pipeline now runs three web searches before the crew starts, and the final emails must be four, cite inline, and cite only retrieved URLs, or the run fails after two feedback retries. QA reviews the draft, not the delivered emails. With 5 companies and one run each, treat differences as indicative; provider 503 retries add latency variance.
 
 ## Configuration
 
