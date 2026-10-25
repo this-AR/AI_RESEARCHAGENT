@@ -17,6 +17,11 @@ Items 1–3 are implemented. Building item 2 exposed a bigger problem: a diagnos
 
 Measured on the same 5 companies: runs completed 5/5, inline citations 100%, cited URLs returned by search 100% (previously about 0% in reality), at about 139k tokens per company (+56%) and 172 s mean latency.
 
+Items 4, 5 and 7 are also implemented:
+- **7:** each run writes a `ResearchRun` JSON artifact; `research-agent eval --rescore DIR` reproduces the live metrics with no API calls.
+- **5:** retries are decided by exception type (Gemini `APIError` with code 429/5xx; litellm rate-limit, overload, timeout and connection errors), with a message-token fallback and equal-jitter backoff. The first live test hit exactly the case this fixes: Gemini returned 503 "high demand" until crewai's own task retries ran out, twice. The old substring check would have failed the run; the new one retried and the third attempt succeeded. The cost shows what's still open: each whole-crew retry re-ran earlier steps (203k tokens for that company). Step-level resume still needs item 6.
+- **4:** `LLM_FALLBACK_MODEL` / `LLM_FALLBACK_API_KEY` (Groq chosen). When the primary's retries end on a transient error, the crew is rebuilt with the fallback, reusing the same search results. Proven by unit test; a Groq crew builds through litellm. Not yet exercised live.
+
 ## P0: Enforce, don't ask
 
 ### 1. Deterministic guardrail on the final task
