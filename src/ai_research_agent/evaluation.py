@@ -18,9 +18,42 @@ from .config import Settings
 from .errors import WorkflowError
 from .lead_scoring import score_lead
 from .models import ResearchTarget
+from .schemas import EmailCampaign
 
 LOGGER = logging.getLogger(__name__)
 _LINK = re.compile(r"\]\((https?://[^)\s]+)\)")
+
+
+def _canonical(url: str) -> str:
+    return url.strip().rstrip("/")
+
+
+def cited_urls(campaign: EmailCampaign) -> list[str]:
+    """Every URL an email cites, inline or in personalization_evidence, canonicalized."""
+    inline = [url for e in campaign.emails for url in _LINK.findall(e.body)]
+    evidence = [c.source_url for e in campaign.emails for c in e.personalization_evidence if c.source_url]
+    return [_canonical(url) for url in inline + evidence]
+
+
+def check_campaign(campaign: Any, retrieved_urls: set[str]) -> str | None:
+    """Return feedback for the agent if the final campaign breaks a hard rule, else None."""
+    if not isinstance(campaign, EmailCampaign):
+        return "Return a structured EmailCampaign."
+    if len(campaign.emails) != 4:
+        return f"Return exactly four emails; you returned {len(campaign.emails)}."
+    allowed = {_canonical(url) for url in retrieved_urls}
+    # crewai retries a guardrail with only this feedback as context, so it must carry the URLs.
+    sources = (
+        f" Cite only these retrieved URLs, exactly as written: {sorted(allowed)[:20]}."
+        " Remove any claim you cannot support with one of them."
+    )
+    unlinked = [i for i, e in enumerate(campaign.emails, 1) if not _LINK.search(e.body)]
+    if unlinked:
+        return f"Emails {unlinked} have no inline [Source](url) link in the body. Add one per factual claim." + sources
+    ungrounded = sorted({url for url in cited_urls(campaign) if url not in allowed})
+    if ungrounded:
+        return f"These cited URLs were never returned by web search: {ungrounded}." + sources
+    return None
 
 
 def score_outputs(outputs: dict[str, Any]) -> dict[str, Any]:
@@ -30,16 +63,8 @@ def score_outputs(outputs: dict[str, Any]) -> dict[str, Any]:
     quality = outputs.get("quality")
     emails = campaign.emails if campaign else []
 
-    known_urls: set[str] = set()
-    if profile:
-        known_urls = {s.url.rstrip("/") for s in profile.sources}
-        for claims in (profile.recent_developments, profile.pain_points, profile.opportunities, profile.risks):
-            known_urls.update(c.source_url.rstrip("/") for c in claims if c.source_url)
-    links = [url.rstrip("/") for e in emails for url in _LINK.findall(e.body)]
-    evidence_urls = [
-        c.source_url.rstrip("/") for e in emails for c in e.personalization_evidence if c.source_url
-    ]
-    cited = links + evidence_urls
+    retrieved = {_canonical(url) for url in outputs.get("retrieved_urls", set())}
+    cited = cited_urls(campaign) if campaign else []
     usage = getattr(outputs.get("raw_result"), "token_usage", None)
 
     return {
@@ -53,9 +78,10 @@ def score_outputs(outputs: dict[str, Any]) -> dict[str, Any]:
             sum(any(c.source_url for c in e.personalization_evidence) for e in emails) / len(emails)
             if emails else 0.0
         ),
-        # Share of all cited URLs (inline or evidence) that the research step actually found.
-        "grounded_link_rate": sum(u in known_urls for u in cited) / len(cited) if cited else None,
-        "qa_passed": bool(quality and quality.passed),
+        # Share of all cited URLs (inline or evidence) that web search actually returned this run.
+        "grounded_link_rate": sum(u in retrieved for u in cited) / len(cited) if cited else None,
+        # The QA agent reviews the draft before the final rewrite, not the delivered emails.
+        "draft_qa_passed": bool(quality and quality.passed),
         "unsupported_claims": len(quality.unsupported_claims) if quality else None,
         "lead_score": score_lead(profile).total if profile else None,
         "total_tokens": getattr(usage, "total_tokens", None),
@@ -77,7 +103,7 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "runs": len(rows),
         "completed": len(done),
         "schema_valid_rate": rate("schema_valid"),
-        "qa_pass_rate": rate("qa_passed"),
+        "draft_qa_pass_rate": rate("draft_qa_passed"),
         "mean_citation_coverage": mean("citation_coverage", done),
         "mean_evidence_coverage": mean("evidence_coverage", done),
         "mean_grounded_link_rate": mean("grounded_link_rate", done),
