@@ -19,8 +19,8 @@ class WorkflowIntegrationTests(TestCase):
             recent_milestone="New funding"
         )
         self.settings = Settings(
-            groq_api_key="test_key",
-            groq_model="llama3-8b-8192",
+            llm_api_key="test_key",
+            llm_model="llama3-8b-8192",
             serper_api_key=None,
             output_dir=Path("outputs"),
             max_rpm=5,
