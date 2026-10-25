@@ -10,18 +10,15 @@ from .errors import DependencyError
 
 def build_agents(settings: Settings, tools: dict[str, Any]) -> dict[str, Any]:
     try:
-        from crewai import LLM, Agent
         import litellm
+        from crewai import LLM, Agent
         litellm.drop_params = True
     except ImportError as exc:
         raise DependencyError(
             "CrewAI is not installed. Run: python -m pip install -e ."
         ) from exc
 
-    model = settings.llm_model
-    if "/" not in model:
-        model = f"groq/{model}"
-    llm = LLM(model=model, api_key=settings.llm_api_key)
+    llm = LLM(model=settings.litellm_model, api_key=settings.llm_api_key)
     common = {
         "llm": llm,
         "allow_delegation": False,
